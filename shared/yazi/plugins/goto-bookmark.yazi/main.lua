@@ -10,7 +10,7 @@ local function notify(content, level)
 	}
 end
 
-local function entry(job)
+local function entry(self, job)
 	local key = job and job.args and job.args[1]
 	if not key then
 		notify("No bookmark key given")
