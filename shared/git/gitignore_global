@@ -1,0 +1,14 @@
+# macOS 系统文件
+.DS_Store
+
+# 临时文件
+*.swp
+*.tmp
+*.log
+
+# IDE 文件
+.vscode/
+.idea/
+
+# claude code 文件
+CLAUDE.md

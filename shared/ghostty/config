@@ -1,0 +1,46 @@
+# ~/.config/ghostty/config
+# Migrated from WezTerm config
+
+# ===== 字体 =====
+# 主字体 Monaco，第二行是中文回退字体 LXGW WenKai Mono
+# Ghostty 支持多次声明 font-family，按顺序回退
+font-family = Monaco
+font-family = LXGW WenKai Mono
+font-size = 20
+
+# ===== 主题 =====
+# WezTerm 原配色: Nord (Gogh)
+# Ghostty 内置了 Nord 主题，直接用
+theme = nord
+
+# ===== 窗口 =====
+# 对应 WezTerm 的 window_padding
+window-padding-x = 10
+window-padding-y = 10
+
+# 对应 WezTerm 的 window_decorations = "RESIZE"
+# tabs 风格让标题栏和 tab 合并，更接近你原来的极简风格
+macos-titlebar-style = tabs
+
+# 对应 WezTerm 的 initial_cols/rows
+# Ghostty 用 columns x rows 格式
+window-width = 120
+window-height = 40
+
+# ===== 光标 =====
+# 对应 WezTerm 的 default_cursor_style = "SteadyBlock"
+cursor-style = block
+cursor-style-blink = false
+shell-integration-features = no-cursor
+
+# ===== 行为 =====
+# 对应 WezTerm 的 window_close_confirmation = "NeverPrompt"
+confirm-close-surface = false
+
+# 实用选项
+mouse-hide-while-typing = true
+copy-on-select = clipboard
+quit-after-last-window-closed = true
+
+# Load machine-local overrides if present.
+config-file = ?local.conf

@@ -1,0 +1,19 @@
+# Default-deny at repo root: only shared/ enters git.
+/*
+!/.gitignore
+!/README.md
+!/shared/
+
+# Noise inside shared/.
+**/.DS_Store
+**/CLAUDE.md
+
+# Local-override convention (anti-typo).
+shared/**/*.local
+shared/**/local.*
+
+# Yazi plugins: only my own; anything `ya pkg` installs is auto-ignored.
+shared/yazi/plugins/*.yazi/
+!shared/yazi/plugins/open-typora.yazi/
+!shared/yazi/plugins/copy-content.yazi/
+!shared/yazi/plugins/goto-bookmark.yazi/

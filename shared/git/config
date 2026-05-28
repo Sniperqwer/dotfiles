@@ -1,0 +1,25 @@
+[core]
+	autocrlf = false
+	quotepath = false
+	excludesfile = ~/.config/git/gitignore_global
+[alias]
+	co = checkout
+	ci = commit
+	st = status
+	br = branch
+	lg = log --oneline --graph --decorate --all --abbrev-commit
+[color]
+	ui = auto
+	status = auto
+	branch = auto
+[status]
+	showUntrackedFiles = all
+[fetch]
+	prune = true
+# Load machine-local overrides if present.
+[include]
+	path = ~/.config/git/config.local
+
+# Per-repo identity for ~/dotfiles itself.
+[includeIf "gitdir:~/dotfiles/"]
+	path = ~/.config/git/identity-personal

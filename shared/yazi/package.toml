@@ -1,0 +1,17 @@
+[[plugin.deps]]
+use = "yazi-rs/plugins:toggle-pane"
+rev = "1962818"
+hash = "4c0260feb50ea2437380690ffc241da7"
+
+[[plugin.deps]]
+use = "AnirudhG07/rich-preview"
+rev = "7d616ad"
+hash = "d64feec9761392cbc250d199ab4b8a3a"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:piper"
+rev = "1962818"
+hash = "384464b6df8cb807425c521f8cd790f3"
+
+[flavor]
+deps = []

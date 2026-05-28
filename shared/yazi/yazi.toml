@@ -1,0 +1,26 @@
+[mgr]
+ratio = [1, 2, 5]
+
+[preview]
+max_width = 3000
+max_height = 3000
+
+[[plugin.prepend_previewers]]
+url = "*.csv"
+run = "rich-preview"
+
+[[plugin.prepend_previewers]]
+url = "*.md"
+run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
+
+[[plugin.prepend_previewers]]
+url = "*.rst"
+run = "rich-preview"
+
+[[plugin.prepend_previewers]]
+url = "*.ipynb"
+run = "rich-preview"
+
+[[plugin.prepend_previewers]]
+url = "*.json"
+run = "rich-preview"
