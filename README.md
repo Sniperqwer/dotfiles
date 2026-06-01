@@ -1,0 +1,173 @@
+[![en](https://img.shields.io/badge/lang-English-blue.svg)](README.md)
+[![zh-CN](https://img.shields.io/badge/lang-中文-red.svg)](README.zh-CN.md)
+
+# dotfiles
+
+My personal macOS dotfiles, layered for cross-machine sharing while keeping work-specific config off GitHub. Deployed with [GNU Stow](https://www.gnu.org/software/stow/) into `~/.config/`.
+
+## Layout
+
+**On GitHub** (what you see after `git clone`):
+
+```
+dotfiles/
+├── README.md
+├── README.zh-CN.md
+├── .gitignore
+└── shared/                    ← tracked, portable across machines
+    ├── ghostty/config
+    ├── git/{config, ignore, gitignore_global, identity-personal}
+    ├── karabiner/karabiner.json
+    ├── starship/starship.toml
+    ├── wezterm/wezterm.lua
+    ├── yazi/{yazi.toml, keymap.toml, package.toml, plugins/}
+    └── zsh/main.zsh
+```
+
+**After you populate `local/` on a machine** (gitignored, **never** uploaded):
+
+```
+dotfiles/
+├── ... (everything above) ...
+└── local/                     ← gitignored, per-machine overrides
+    ├── ghostty/local.conf     ← background-image, absolute paths
+    ├── git/config.local       ← [user] name + email for this machine
+    ├── wezterm/local.lua      ← returns a function that mutates wezterm config
+    ├── yazi/bookmarks.lua     ← table: key → directory path
+    └── zsh/work.zsh           ← work aliases / employer-specific paths
+```
+
+> **Important**: `local/` is `.gitignore`d. A fresh `git clone` produces **no** `local/` directory — you create it by hand only on machines that need machine-specific overrides. Every `shared/` config is written to tolerate a missing `local/`, so the repo works as-is on a clean machine.
+
+Both `shared/` and `local/` are independent stow packages. After stow, `~/.config/<tool>/...` becomes symlinks pointing into this repo.
+
+## Why this layout
+
+- **`shared/` = portable.** Cross-machine, publicly visible, no work-identifying content.
+- **`local/` = machine-specific.** Lives only where it's needed: user identity, employer paths, private bookmarks.
+- **Soft-load bridges.** Each `shared/` config loads its `local/` counterpart with a "file exists → source, missing → silent skip" pattern. A clean clone runs cleanly without any `local/` file.
+
+## Quick start (new machine)
+
+Requires macOS and `brew install stow`.
+
+```bash
+# 1. Clone
+git clone git@github.com:Sniperqwer/dotfiles.git ~/dotfiles
+
+# 2. If ~/.config/<tool> already exists as a real directory, back it up first
+#    and remove it so stow has a clean target:
+#    cp -aR ~/.config ~/.config.bak.$(date +%F)
+#    rm -rf ~/.config/{ghostty,git,karabiner,starship,wezterm,yazi,zsh}
+
+# 3. Deploy shared (mandatory)
+cd ~/dotfiles
+stow -v --target="$HOME/.config" --no-folding shared
+
+# 4. Deploy local (only if you've created one — typically on work machines)
+[ -d local ] && stow -v --target="$HOME/.config" --no-folding local
+
+# 5. Make sure ~/.zshrc sources the deployed main.zsh
+#    (add the line below if it isn't there):
+#    source "$HOME/.config/zsh/main.zsh"
+
+# 6. (yazi only) install upstream plugins listed in package.toml
+cd ~/.config/yazi && ya pkg -i
+```
+
+`--no-folding` is required — it keeps `~/.config/<tool>/` as a real directory, so karabiner-elements and `ya pkg -i` can write their own files there without contaminating this repo.
+
+## What's tracked + load mechanism
+
+| Tool      | shared entry                          | local override                 | Bridge                                                                    |
+|-----------|---------------------------------------|--------------------------------|---------------------------------------------------------------------------|
+| zsh       | `shared/zsh/main.zsh`                 | `local/zsh/work.zsh`           | `[ -f .../work.zsh ] && source` at the end of `main.zsh`                  |
+| git       | `shared/git/config`                   | `local/git/config.local`       | `[include] path = ~/.config/git/config.local`                             |
+| git (id)  | `shared/git/identity-personal`        | —                              | `[includeIf "gitdir:~/dotfiles/"]` → public noreply identity for this repo |
+| ghostty   | `shared/ghostty/config`               | `local/ghostty/local.conf`     | `config-file = ?local.conf` (the `?` prefix makes it optional)            |
+| wezterm   | `shared/wezterm/wezterm.lua`          | `local/wezterm/local.lua`      | `pcall(dofile, "~/.config/wezterm/local.lua")` returns a mutator function |
+| yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/bookmarks.lua`     | `goto-bookmark` plugin reads `bookmarks.lua` via `pcall(dofile, ...)`     |
+| karabiner | `shared/karabiner/karabiner.json`     | —                              | (no include mechanism; keep all rules in shared)                          |
+| starship  | `shared/starship/starship.toml`       | —                              | (theme only; no per-machine overrides)                                    |
+
+## Common tasks
+
+### Edit a tracked config
+
+```bash
+$EDITOR ~/dotfiles/shared/<tool>/<file>
+# Symlinks are already in place — the change takes effect on the next program load.
+```
+
+### Add a machine-local override
+
+```bash
+mkdir -p ~/dotfiles/local/<tool>
+$EDITOR ~/dotfiles/local/<tool>/<file>
+cd ~/dotfiles && stow -v --restow --target="$HOME/.config" --no-folding local
+```
+
+### Add a new tool to shared
+
+```bash
+mkdir -p ~/dotfiles/shared/<tool>
+cp ~/.config/<tool>/<file> ~/dotfiles/shared/<tool>/<file>
+rm -rf ~/.config/<tool>          # back up first if you're unsure
+cd ~/dotfiles && stow -v --restow --target="$HOME/.config" --no-folding shared
+```
+
+### Restow after structural changes (adding/removing files)
+
+```bash
+cd ~/dotfiles
+stow -v -R --target="$HOME/.config" --no-folding shared
+stow -v -R --target="$HOME/.config" --no-folding local
+```
+
+### Uninstall (revert to a plain `~/.config`)
+
+```bash
+cd ~/dotfiles
+stow -D --target="$HOME/.config" --no-folding shared local
+# Then restore from your ~/.config.bak.* backup or set the configs up manually.
+```
+
+## Conventions
+
+- **Local file naming.** Files inside `local/` either end with `.local` (e.g. `config.local`) or start with `local.` (e.g. `local.conf`). `.gitignore` enforces `shared/**/*.local` and `shared/**/local.*` as a typo guard, so a misplaced local file can't sneak into git.
+- **Yazi plugins.** Only the three self-written plugins under `shared/yazi/plugins/` are tracked. Anything `ya pkg -i` installs (piper, rich-preview, toggle-pane, …) is blocked by `shared/yazi/plugins/*.yazi/` plus a `!`-allowlist for the three self-written ones.
+- **Git identity.** This repo's commits always carry the public GitHub noreply identity (`Sniper <169253722+Sniperqwer@users.noreply.github.com>`) thanks to the `includeIf "gitdir:~/dotfiles/"` rule, regardless of the machine's default identity.
+- **`CLAUDE.md` is gitignored repo-wide.** If you want repo-level Claude Code instructions, add a section here instead.
+
+## For LLM agents (Claude Code etc.)
+
+**Where new content goes**:
+
+- Cross-machine, no employer-identifying data → `shared/<tool>/...`
+- Specific to one machine (employer email, internal paths, private bookmarks, API tokens) → `local/<tool>/...`
+
+**Hard rules**:
+
+1. **Never** write employer-identifying strings into `shared/` (company names, employer email, internal hostnames, kube context names, internal infra paths). When unsure, default to `local/`.
+2. **Never** commit anything under `local/`. It's gitignored — don't bypass it.
+3. **Never** add a `user.name` / `user.email` to `shared/git/config`. Per-repo identity belongs in `local/git/config.local` (work) or in a target repo's own `.git/config`.
+4. **Don't** disable `--no-folding` when running stow. Karabiner-Elements and `ya pkg` depend on `~/.config/<tool>/` being a real directory.
+5. **Don't** add files under `shared/yazi/plugins/<upstream>.yazi/`. Those are managed by `ya pkg` and `.gitignore` will block them anyway.
+
+**Useful greps for context**:
+
+```bash
+git ls-files                            # everything tracked
+rg -l '~/\.config/' shared/             # files that reference deployed paths
+git config --show-origin user.email     # which file is providing identity
+readlink ~/.config/<tool>/<file>        # confirm the symlink target
+```
+
+**Adding a new soft-load bridge** (a `shared/` config that should pick up a `local/` override): prefer the tool's native include mechanism — zsh `source`, git `[include]`, ghostty `config-file = ?...`. For Lua-based tools use `pcall(dofile, ...)`. If the tool has no include mechanism (karabiner, starship), keep everything in `shared/` and don't invent one.
+
+## Troubleshooting
+
+- **`g w` in yazi shows "No bookmark key given".** The `goto-bookmark` plugin's entry signature must be `function entry(self, job)` — yazi 26.x passes `self` as the first argument. Verify the plugin file if this regresses after a yazi upgrade.
+- **Karabiner-Elements wrote a real file over the symlink.** The GUI sometimes does an atomic rename, replacing the symlink. Move your changes back into `shared/karabiner/karabiner.json` and run `stow -R --no-folding shared`.
+- **`git config user.email` returns the work address inside `~/dotfiles`.** The `includeIf "gitdir:~/dotfiles/"` rule needs the trailing slash and the exact path. Verify with `git config --show-origin user.email` inside the repo.
+- **Stow reports a conflict on first deploy.** A pre-existing real directory is at the target path. Back it up, `rm -rf` it, then re-stow.

@@ -1,7 +1,7 @@
 # Default-deny at repo root: only shared/ enters git.
 /*
 !/.gitignore
-!/README.md
+!/README*.md
 !/shared/
 
 # Noise inside shared/.
