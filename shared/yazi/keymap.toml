@@ -135,9 +135,9 @@ keymap = [
 	{ on = [ "g", "<Space>" ], run = "cd --interactive", desc = "Jump interactively" },
 	{ on = [ "g", "f" ],       run = "follow",           desc = "Follow hovered symlink" },
 
-	# Bookmark slots — paths live in local/yazi/bookmarks.lua.
+	# Bookmark slots — paths live in local/yazi/local.lua.
 	# Reserved letters: s w p r i j m n b k t u v x y z q (avoid g/h/c/d/f used above).
-	# To add a new jump on a machine, just add `<letter> = "..."` to bookmarks.lua.
+	# To add a new jump on a machine, just add `<letter> = "..."` to local.lua.
 	{ on = [ "g", "s" ], run = "plugin goto-bookmark -- s", desc = "Go bookmark: s" },
 	{ on = [ "g", "w" ], run = "plugin goto-bookmark -- w", desc = "Go bookmark: w" },
 	{ on = [ "g", "p" ], run = "plugin goto-bookmark -- p", desc = "Go bookmark: p" },

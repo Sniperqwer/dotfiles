@@ -36,5 +36,5 @@ eval "$(starship init zsh)"
 eval "$(zoxide init zsh)"
 
 # Load machine-local overrides if present.
-[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/work.zsh" ] \
-  && source "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/work.zsh"
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/local.zsh" ] \
+  && source "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/local.zsh"
