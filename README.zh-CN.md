@@ -16,7 +16,7 @@ dotfiles/
 ├── .gitignore
 └── shared/                    ← 进 git，跨机器共享
     ├── ghostty/config
-    ├── git/{config, ignore, gitignore_global, identity-personal}
+    ├── git/{config, ignore, gitignore_global, identity-personal, hooks/}
     ├── karabiner/karabiner.json
     ├── starship/starship.toml
     ├── wezterm/wezterm.lua
@@ -72,6 +72,17 @@ stow -v --target="$HOME/.config" --no-folding shared
 
 # 6. （仅 yazi）安装 package.toml 里声明的上游插件
 cd ~/.config/yazi && ya pkg -i
+
+# 7. 确认 pre-commit hook 已就位（README 同步守卫）。
+#    `shared/git/config` 里 `core.hooksPath = ~/.config/git/hooks`，钩子文件以
+#    100755 模式入库，git 在 clone 时会保留 +x，正常情况下不需要 chmod。
+git -C ~/dotfiles config core.hooksPath          # → ~/.config/git/hooks
+ls -l ~/.config/git/hooks/pre-commit             # → 指向 shared/git/hooks/ 的符号链接
+[ -x ~/.config/git/hooks/pre-commit ] && echo "hook executable: yes"
+
+#    如果最后一行没输出（例如你是手动复制过来的，或本机文件系统关掉了
+#    git 的 core.fileMode），手动补回执行位：
+#    chmod +x ~/dotfiles/shared/git/hooks/pre-commit
 ```
 
 `--no-folding` 必加 —— 它让 `~/.config/<tool>/` 保持为实体目录，karabiner-elements 和 `ya pkg -i` 的回写就不会污染本仓库。
@@ -85,9 +96,10 @@ cd ~/.config/yazi && ya pkg -i
 | git (身份) | `shared/git/identity-personal`        | —                              | `[includeIf "gitdir:~/dotfiles/"]` → 本仓库用公开 noreply 身份             |
 | ghostty   | `shared/ghostty/config`               | `local/ghostty/local.conf`     | `config-file = ?local.conf`（前缀 `?` 表示可选）                            |
 | wezterm   | `shared/wezterm/wezterm.lua`          | `local/wezterm/local.lua`      | `pcall(dofile, "~/.config/wezterm/local.lua")` 返回一个修改函数             |
-| yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/bookmarks.lua`     | `goto-bookmark` 插件用 `pcall(dofile, ...)` 读取 `bookmarks.lua`           |
+| yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/bookmarks.lua`     | shared keymap 预注册了一组 `g+<letter>` 槽位，全部派发到 `goto-bookmark` 插件；插件用 `pcall(dofile, ...)` 读取 `bookmarks.lua` —— local 只改 `bookmarks.lua` 即可 |
 | karabiner | `shared/karabiner/karabiner.json`     | —                              | （无 include 机制；规则全放 shared）                                        |
 | starship  | `shared/starship/starship.toml`       | —                              | （纯主题，没有单机覆盖需求）                                                |
+| git-hooks | `shared/git/hooks/pre-commit`         | —                              | `shared/git/config` 中 `core.hooksPath = ~/.config/git/hooks`              |
 
 ## 常见任务
 
@@ -137,6 +149,8 @@ stow -D --target="$HOME/.config" --no-folding shared local
 - **yazi 插件**。`shared/yazi/plugins/` 下只跟踪 3 个自写插件。`ya pkg -i` 装的上游（piper、rich-preview、toggle-pane 等）被 `shared/yazi/plugins/*.yazi/` + `!`-放行 3 个自写的规则挡住。
 - **git 身份**。借助 `includeIf "gitdir:~/dotfiles/"` 规则，本仓库的所有 commit 都用公开 noreply 身份（`Sniper <169253722+Sniperqwer@users.noreply.github.com>`），无视当前机器的默认身份。
 - **`CLAUDE.md` 全局 gitignored**。如果要写仓库级 Claude Code 指引，就直接加在本 README 里。
+- **yazi bookmark 槽位**。`shared/yazi/keymap.toml` 预注册了一批 `g+<letter>`：`s w p r i j m n b k t u v x y z q`，全部派发到 `goto-bookmark` 插件。要在某台机器新增跳转，只改 `local/yazi/bookmarks.lua`（shared 不动）。未配置的字母会弹通知，不会报错。yazi 内置的 g 导航保留不动：`g+g`、`g+h`、`g+c`、`g+d`、`g+f`、`g+<Space>`。
+- **README 必须与 `shared/` 结构同步**。`shared/git/hooks/pre-commit` 通过 `core.hooksPath = ~/.config/git/hooks` 接入，新增或删除 `shared/<tool>/` 顶层目录时，如果没有同时 stage `README.md` 和 `README.zh-CN.md`，commit 会被拦下。有意绕过用 `git commit --no-verify`。
 
 ## 给 LLM agent 的说明（Claude Code 等）
 
@@ -152,6 +166,8 @@ stow -D --target="$HOME/.config" --no-folding shared local
 3. **不要**往 `shared/git/config` 加 `user.name` / `user.email`。Per-repo 身份属于 `local/git/config.local`（工作机）或目标仓库自己的 `.git/config`。
 4. **不要**在跑 stow 时省掉 `--no-folding`。karabiner-elements 和 `ya pkg` 依赖 `~/.config/<tool>/` 是实体目录。
 5. **不要**往 `shared/yazi/plugins/<upstream>.yazi/` 里放文件。那些归 `ya pkg` 管，`.gitignore` 也会拦住。
+6. **新增或删除 `shared/<tool>/` 顶层目录时，必须在同一个 commit 里同步更新 `README.md` 和 `README.zh-CN.md`**：包括 "目录结构" 树、"跟踪文件与加载机制" 表，以及该工具特有的红线。否则 pre-commit hook 会拦住 commit。
+7. **新增的"红线"（hard rule）也要同步到两份 README**。两份 README 的红线列表是人和 agent 共同遵循的唯一来源。
 
 **侦查上下文的常用命令**：
 
@@ -170,3 +186,5 @@ readlink ~/.config/<tool>/<file>        # 确认符号链接指向
 - **Karabiner-Elements 把符号链接覆盖成了实体文件**：GUI 偶尔会做原子 rename，把 symlink 替换掉。把改动复制回 `shared/karabiner/karabiner.json` 然后 `stow -R --no-folding shared`。
 - **在 `~/dotfiles` 里 `git config user.email` 返回工作邮箱**：`includeIf "gitdir:~/dotfiles/"` 规则需要末尾斜杠和准确路径。在仓库内跑 `git config --show-origin user.email` 看是哪份配置生效。
 - **首次部署时 stow 报 conflict**：目标路径已存在实体目录。备份后 `rm -rf` 掉，再 stow。
+- **pre-commit hook 拦下了 commit，提示 README 未同步**：你新增或删除了 `shared/<tool>/` 顶层目录。要么更新 `README.md` + `README.zh-CN.md` 后重新 stage，要么在确认 README 已经一致时用 `--no-verify` 绕过（比如在 revert 之前的 commit）。
+- **yazi 里按 `g+s`（或任意 `g+<letter>`）提示 "No bookmark for: X"**：在 `local/yazi/bookmarks.lua` 里加 `X = "..."`。shared keymap 中所有保留字母都派发到 bookmark 插件，路径由 local 提供。

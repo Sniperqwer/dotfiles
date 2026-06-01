@@ -16,7 +16,7 @@ dotfiles/
 ├── .gitignore
 └── shared/                    ← tracked, portable across machines
     ├── ghostty/config
-    ├── git/{config, ignore, gitignore_global, identity-personal}
+    ├── git/{config, ignore, gitignore_global, identity-personal, hooks/}
     ├── karabiner/karabiner.json
     ├── starship/starship.toml
     ├── wezterm/wezterm.lua
@@ -73,6 +73,18 @@ stow -v --target="$HOME/.config" --no-folding shared
 
 # 6. (yazi only) install upstream plugins listed in package.toml
 cd ~/.config/yazi && ya pkg -i
+
+# 7. Verify the pre-commit hook is wired up (README sync guard).
+#    `shared/git/config` sets `core.hooksPath = ~/.config/git/hooks`, and the hook
+#    is committed with mode 100755, so git preserves the +x bit on clone — no
+#    chmod needed in normal cases.
+git -C ~/dotfiles config core.hooksPath          # → ~/.config/git/hooks
+ls -l ~/.config/git/hooks/pre-commit             # → symlink into shared/git/hooks/
+[ -x ~/.config/git/hooks/pre-commit ] && echo "hook executable: yes"
+
+#    If the last check prints nothing (e.g. you copied the file by hand, or git's
+#    core.fileMode is off on this filesystem), restore the bit:
+#    chmod +x ~/dotfiles/shared/git/hooks/pre-commit
 ```
 
 `--no-folding` is required — it keeps `~/.config/<tool>/` as a real directory, so karabiner-elements and `ya pkg -i` can write their own files there without contaminating this repo.
@@ -86,9 +98,10 @@ cd ~/.config/yazi && ya pkg -i
 | git (id)  | `shared/git/identity-personal`        | —                              | `[includeIf "gitdir:~/dotfiles/"]` → public noreply identity for this repo |
 | ghostty   | `shared/ghostty/config`               | `local/ghostty/local.conf`     | `config-file = ?local.conf` (the `?` prefix makes it optional)            |
 | wezterm   | `shared/wezterm/wezterm.lua`          | `local/wezterm/local.lua`      | `pcall(dofile, "~/.config/wezterm/local.lua")` returns a mutator function |
-| yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/bookmarks.lua`     | `goto-bookmark` plugin reads `bookmarks.lua` via `pcall(dofile, ...)`     |
+| yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/bookmarks.lua`     | shared keymap pre-registers `g+<letter>` slots that all dispatch to the `goto-bookmark` plugin; the plugin reads `bookmarks.lua` via `pcall(dofile, ...)` — local just edits `bookmarks.lua` |
 | karabiner | `shared/karabiner/karabiner.json`     | —                              | (no include mechanism; keep all rules in shared)                          |
 | starship  | `shared/starship/starship.toml`       | —                              | (theme only; no per-machine overrides)                                    |
+| git-hooks | `shared/git/hooks/pre-commit`         | —                              | `core.hooksPath = ~/.config/git/hooks` in `shared/git/config`              |
 
 ## Common tasks
 
@@ -138,6 +151,8 @@ stow -D --target="$HOME/.config" --no-folding shared local
 - **Yazi plugins.** Only the three self-written plugins under `shared/yazi/plugins/` are tracked. Anything `ya pkg -i` installs (piper, rich-preview, toggle-pane, …) is blocked by `shared/yazi/plugins/*.yazi/` plus a `!`-allowlist for the three self-written ones.
 - **Git identity.** This repo's commits always carry the public GitHub noreply identity (`Sniper <169253722+Sniperqwer@users.noreply.github.com>`) thanks to the `includeIf "gitdir:~/dotfiles/"` rule, regardless of the machine's default identity.
 - **`CLAUDE.md` is gitignored repo-wide.** If you want repo-level Claude Code instructions, add a section here instead.
+- **Yazi bookmark slots.** `shared/yazi/keymap.toml` pre-registers `g+<letter>` for `s w p r i j m n b k t u v x y z q` — they all dispatch to the `goto-bookmark` plugin. To add a new jump on a machine, edit `local/yazi/bookmarks.lua` only (no shared change needed). The plugin shows a notification if a letter has no entry. Built-in yazi g-navigations are kept untouched: `g+g`, `g+h`, `g+c`, `g+d`, `g+f`, `g+<Space>`.
+- **README stays in sync with `shared/` structure.** A pre-commit hook at `shared/git/hooks/pre-commit`, wired via `core.hooksPath = ~/.config/git/hooks`, blocks any commit that adds or removes a top-level `shared/<tool>/` directory without also staging `README.md` and `README.zh-CN.md`. Bypass intentionally with `git commit --no-verify`.
 
 ## For LLM agents (Claude Code etc.)
 
@@ -153,6 +168,8 @@ stow -D --target="$HOME/.config" --no-folding shared local
 3. **Never** add a `user.name` / `user.email` to `shared/git/config`. Per-repo identity belongs in `local/git/config.local` (work) or in a target repo's own `.git/config`.
 4. **Don't** disable `--no-folding` when running stow. Karabiner-Elements and `ya pkg` depend on `~/.config/<tool>/` being a real directory.
 5. **Don't** add files under `shared/yazi/plugins/<upstream>.yazi/`. Those are managed by `ya pkg` and `.gitignore` will block them anyway.
+6. **When you add or remove a tool under `shared/<tool>/`, you MUST update BOTH `README.md` and `README.zh-CN.md`** in the same commit: the "Layout" tree, the "What's tracked + load mechanism" table, and any tool-specific hard rules. The pre-commit hook will block the commit otherwise.
+7. **When you introduce a hard rule that changes contributor behavior, add it to both READMEs.** The "Hard rules" lists are the source of truth for both humans and agents.
 
 **Useful greps for context**:
 
@@ -171,3 +188,5 @@ readlink ~/.config/<tool>/<file>        # confirm the symlink target
 - **Karabiner-Elements wrote a real file over the symlink.** The GUI sometimes does an atomic rename, replacing the symlink. Move your changes back into `shared/karabiner/karabiner.json` and run `stow -R --no-folding shared`.
 - **`git config user.email` returns the work address inside `~/dotfiles`.** The `includeIf "gitdir:~/dotfiles/"` rule needs the trailing slash and the exact path. Verify with `git config --show-origin user.email` inside the repo.
 - **Stow reports a conflict on first deploy.** A pre-existing real directory is at the target path. Back it up, `rm -rf` it, then re-stow.
+- **`pre-commit` hook blocks a commit complaining about README sync.** You added or removed a top-level `shared/<tool>/` directory. Either update `README.md` + `README.zh-CN.md` and re-stage, or pass `--no-verify` if the READMEs are already in sync (e.g. you're reverting a previous commit).
+- **`g+s` (or any `g+<letter>`) in yazi shows "No bookmark for: X".** Add `X = "..."` to `local/yazi/bookmarks.lua`. All reserved letters in shared keymap dispatch to the bookmark plugin; the actual paths live in `local/`.
