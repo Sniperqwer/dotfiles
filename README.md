@@ -9,15 +9,16 @@ My personal macOS dotfiles, layered for cross-machine sharing while keeping mach
 
 **On GitHub** (what you see after `git clone`):
 
-```
+```text
 dotfiles/
 ├── README.md
 ├── README.zh-CN.md
 ├── .gitignore
+├── .markdownlint-cli2.yaml  ← repo-local README lint config
 ├── install.sh                ← optional brew bootstrap (formulas + casks)
 └── shared/                    ← tracked, portable across machines
     ├── ghostty/config
-    ├── git/{config, ignore, gitignore_global, identity-personal, hooks/}
+    ├── git/{config, dotfiles, ignore, gitignore_global, identity-personal, hooks/}
     ├── karabiner/karabiner.json
     ├── starship/starship.toml
     ├── wezterm/wezterm.lua
@@ -27,7 +28,7 @@ dotfiles/
 
 **After you populate `local/` on a machine** (gitignored, **never** uploaded):
 
-```
+```text
 dotfiles/
 ├── ... (everything above) ...
 └── local/                     ← gitignored, per-machine overrides
@@ -50,7 +51,8 @@ Both `shared/` and `local/` are independent stow packages. After stow, `~/.confi
 
 ## Quick start (new machine)
 
-Requires macOS and Homebrew (see https://brew.sh). `stow` and other CLI deps can be installed via `install.sh` in step 2.
+Requires macOS and Homebrew (see [brew.sh](https://brew.sh)). `stow` and other CLI deps can be installed via `install.sh` in step 2.
+This repo is designed for the clone path `~/dotfiles`; the dotfiles-only Git hook and identity include intentionally target that path.
 
 ```bash
 # 1. Clone
@@ -59,7 +61,7 @@ git clone git@github.com:Sniperqwer/dotfiles.git ~/dotfiles
 # 2. (Optional) Install the brew packages this repo depends on.
 #    See `bash install.sh -h` for flags. Skip if you manage brew packages yourself.
 cd ~/dotfiles && bash install.sh        # CLI only
-# bash install.sh --all                  # CLI + casks
+# bash install.sh --all                  # CLI + casks (Ghostty, WezTerm, Karabiner, Typora, font)
 
 # 3. If ~/.config/<tool> already exists as a real directory, back it up first
 #    and remove it so stow has a clean target:
@@ -81,9 +83,10 @@ stow -v --target="$HOME/.config" --no-folding shared
 cd ~/.config/yazi && ya pkg install
 
 # 8. Verify the pre-commit hook is wired up (README sync guard).
-#    `shared/git/config` sets `core.hooksPath = ~/.config/git/hooks`, and the hook
-#    is committed with mode 100755, so git preserves the +x bit on clone — no
-#    chmod needed in normal cases.
+#    `shared/git/config` loads `shared/git/dotfiles` only for `~/dotfiles`;
+#    that file sets `core.hooksPath = ~/.config/git/hooks`. The hook is committed
+#    with mode 100755, so git preserves the +x bit on clone — no chmod needed in
+#    normal cases.
 git -C ~/dotfiles config core.hooksPath          # → ~/.config/git/hooks
 ls -l ~/.config/git/hooks/pre-commit             # → symlink into shared/git/hooks/
 [ -x ~/.config/git/hooks/pre-commit ] && echo "hook executable: yes"
@@ -101,13 +104,13 @@ ls -l ~/.config/git/hooks/pre-commit             # → symlink into shared/git/h
 |-----------|---------------------------------------|--------------------------------|---------------------------------------------------------------------------|
 | zsh       | `shared/zsh/main.zsh`                 | `local/zsh/local.zsh`          | `[ -f .../local.zsh ] && source` at the end of `main.zsh`                 |
 | git       | `shared/git/config`                   | `local/git/config.local`       | `[include] path = ~/.config/git/config.local`                             |
-| git (id)  | `shared/git/identity-personal`        | —                              | `[includeIf "gitdir:~/dotfiles/"]` → public noreply identity for this repo |
+| git (dotfiles) | `shared/git/dotfiles`, `shared/git/identity-personal` | — | `[includeIf "gitdir:~/dotfiles/"]` loads dotfiles-only hooks + public noreply identity |
 | ghostty   | `shared/ghostty/config`               | `local/ghostty/local.conf`     | `config-file = ?local.conf` (the `?` prefix makes it optional)            |
 | wezterm   | `shared/wezterm/wezterm.lua`          | `local/wezterm/local.lua`      | `pcall(dofile, "~/.config/wezterm/local.lua")` returns a mutator function |
 | yazi      | `shared/yazi/{*.toml, plugins/}`      | `local/yazi/local.lua`         | shared keymap pre-registers `g+<letter>` slots that all dispatch to the `goto-bookmark` plugin; the plugin reads `local.lua` via `pcall(dofile, ...)` — local just edits `local.lua` |
 | karabiner | `shared/karabiner/karabiner.json`     | —                              | (no include mechanism; keep all rules in shared)                          |
 | starship  | `shared/starship/starship.toml`       | —                              | (theme only; no per-machine overrides)                                    |
-| git-hooks | `shared/git/hooks/pre-commit`         | —                              | `core.hooksPath = ~/.config/git/hooks` in `shared/git/config`              |
+| git-hooks | `shared/git/hooks/pre-commit`         | —                              | `core.hooksPath = ~/.config/git/hooks` in `shared/git/dotfiles`, loaded only for `~/dotfiles` |
 
 ## Common tasks
 
@@ -125,6 +128,8 @@ mkdir -p ~/dotfiles/local/<tool>
 $EDITOR ~/dotfiles/local/<tool>/<file>
 cd ~/dotfiles && stow -v --restow --target="$HOME/.config" --no-folding local
 ```
+
+Example: personal directory shortcuts such as `alias gs='cd ~/self/'` belong in `local/zsh/local.zsh`, not in `shared/zsh/main.zsh`.
 
 ### Add a new tool to shared
 
@@ -155,10 +160,13 @@ stow -D --target="$HOME/.config" --no-folding shared local
 
 - **Local file naming.** Files inside `local/` either end with `.local` (e.g. `config.local`) or start with `local.` (e.g. `local.conf`). `.gitignore` enforces `shared/**/*.local` and `shared/**/local.*` as a typo guard, so a misplaced local file can't sneak into git.
 - **Yazi plugins.** Only the three self-written plugins under `shared/yazi/plugins/` are tracked. Anything `ya pkg install` installs (piper, rich-preview, toggle-pane, …) is blocked by `shared/yazi/plugins/*.yazi/` plus a `!`-allowlist for the three self-written ones.
-- **Git identity.** This repo's commits always carry the public GitHub noreply identity (`Sniper <169253722+Sniperqwer@users.noreply.github.com>`) thanks to the `includeIf "gitdir:~/dotfiles/"` rule, regardless of the machine's default identity.
+- **Git identity.** Commits in `~/dotfiles` always carry the public GitHub noreply identity (`Sniper <169253722+Sniperqwer@users.noreply.github.com>`) thanks to the `includeIf "gitdir:~/dotfiles/"` rule, regardless of the machine's default identity.
 - **`CLAUDE.md` is gitignored repo-wide.** If you want repo-level Claude Code instructions, add a section here instead.
 - **Yazi bookmark slots.** `shared/yazi/keymap.toml` pre-registers `g+<letter>` for `s w p r i j m n b k t u v x y z q` — they all dispatch to the `goto-bookmark` plugin. To add a new jump on a machine, edit `local/yazi/local.lua` only (no shared change needed). The plugin shows a notification if a letter has no entry. Built-in yazi g-navigations are kept untouched: `g+g`, `g+h`, `g+c`, `g+d`, `g+f`, `g+<Space>`.
-- **README stays in sync with `shared/` structure.** A pre-commit hook at `shared/git/hooks/pre-commit`, wired via `core.hooksPath = ~/.config/git/hooks`, blocks any commit that adds or removes a top-level `shared/<tool>/` directory without also staging `README.md` and `README.zh-CN.md`. Bypass intentionally with `git commit --no-verify`.
+- **README stays in sync with `shared/` structure.** A pre-commit hook at `shared/git/hooks/pre-commit`, wired only for `~/dotfiles` via `shared/git/dotfiles`, blocks any commit that adds or removes a top-level `shared/<tool>/` directory unless both `README.md` and `README.zh-CN.md` are staged. Bypass intentionally with `git commit --no-verify`.
+- **README lint is repo-local.** `.markdownlint-cli2.yaml` configures `markdownlint-cli2` for this repository's READMEs only; it is not a machine-wide Markdown policy.
+- **Typora dependency.** The zsh `md` alias and yazi `open-typora` plugin expect Typora. It is installed by `bash install.sh --cask` or `bash install.sh --all`.
+- **Guarded zsh integrations.** `shared/zsh/main.zsh` only initializes optional brew shell integrations when the relevant files or commands exist, so a partial bootstrap does not break shell startup.
 
 ## For LLM agents (Claude Code etc.)
 
@@ -174,7 +182,7 @@ stow -D --target="$HOME/.config" --no-folding shared local
 3. **Never** add a `user.name` / `user.email` to `shared/git/config`. The machine's default identity belongs in `local/git/config.local`, or per-repo in a target repo's own `.git/config`.
 4. **Don't** disable `--no-folding` when running stow. Karabiner-Elements and `ya pkg` depend on `~/.config/<tool>/` being a real directory.
 5. **Don't** add files under `shared/yazi/plugins/<upstream>.yazi/`. Those are managed by `ya pkg` and `.gitignore` will block them anyway.
-6. **When you add or remove a tool under `shared/<tool>/`, you MUST update BOTH `README.md` and `README.zh-CN.md`** in the same commit: the "Layout" tree, the "What's tracked + load mechanism" table, and any tool-specific hard rules. The pre-commit hook will block the commit otherwise.
+6. **When you add or remove a tool under `shared/<tool>/`, you MUST update BOTH `README.md` and `README.zh-CN.md`** in the same commit: the "Layout" tree, the "What's tracked + load mechanism" table, and any tool-specific hard rules. The pre-commit hook requires both files to be staged.
 7. **When you introduce a hard rule that changes contributor behavior, add it to both READMEs.** The "Hard rules" lists are the source of truth for both humans and agents.
 
 **Useful greps for context**:
@@ -183,6 +191,7 @@ stow -D --target="$HOME/.config" --no-folding shared local
 git ls-files                            # everything tracked
 rg -l '~/\.config/' shared/             # files that reference deployed paths
 git config --show-origin user.email     # which file is providing identity
+markdownlint-cli2 README.md README.zh-CN.md
 readlink ~/.config/<tool>/<file>        # confirm the symlink target
 ```
 
@@ -192,7 +201,7 @@ readlink ~/.config/<tool>/<file>        # confirm the symlink target
 
 - **`g w` in yazi shows "No bookmark key given".** The `goto-bookmark` plugin's entry signature must be `function entry(self, job)` — yazi 26.x passes `self` as the first argument. Verify the plugin file if this regresses after a yazi upgrade.
 - **Karabiner-Elements wrote a real file over the symlink.** The GUI sometimes does an atomic rename, replacing the symlink. Move your changes back into `shared/karabiner/karabiner.json` and run `stow -R --no-folding shared`.
-- **`git config user.email` returns the machine-default address inside `~/dotfiles` instead of the repo's noreply identity.** The `includeIf "gitdir:~/dotfiles/"` rule needs the trailing slash and the exact path. Verify with `git config --show-origin user.email` inside the repo.
+- **`git config user.email` returns the machine-default address inside `~/dotfiles` instead of the repo's noreply identity.** The `includeIf "gitdir:~/dotfiles/"` rule needs the trailing slash and the exact path, and `~/.config/git/dotfiles` must exist after restowing `shared/`. Verify with `git config --show-origin user.email` inside the repo.
 - **Stow reports a conflict on first deploy.** A pre-existing real directory is at the target path. Back it up, `rm -rf` it, then re-stow.
-- **`pre-commit` hook blocks a commit complaining about README sync.** You added or removed a top-level `shared/<tool>/` directory. Either update `README.md` + `README.zh-CN.md` and re-stage, or pass `--no-verify` if the READMEs are already in sync (e.g. you're reverting a previous commit).
+- **`pre-commit` hook blocks a commit complaining about README sync.** You added or removed a top-level `shared/<tool>/` directory. Update both `README.md` and `README.zh-CN.md`, stage both files, and commit again; pass `--no-verify` only when bypassing intentionally.
 - **`g+s` (or any `g+<letter>`) in yazi shows "No bookmark for: X".** Add `X = "..."` to `local/yazi/local.lua`. All reserved letters in shared keymap dispatch to the bookmark plugin; the actual paths live in `local/`.

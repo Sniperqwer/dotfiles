@@ -1,6 +1,7 @@
 # Default-deny at repo root: only shared/ enters git.
 /*
 !/.gitignore
+!/.markdownlint-cli2.yaml
 !/README*.md
 !/install.sh
 !/shared/

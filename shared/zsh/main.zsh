@@ -6,7 +6,6 @@ export EDITOR="nvim"
 
 # 设置别名
 alias gc='cd ~/.config/'
-alias gs='cd ~/self/'
 alias lg='lazygit'
 alias md='open -a "Typora"'
 
@@ -27,13 +26,15 @@ function y() {
 	rm -f -- "$tmp"
 }
 
-# Activate syntax highlighting
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-# Activate autosuggestions
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+ZSH_HIGHLIGHTING="/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+ZSH_AUTOSUGGESTIONS="/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
 
-eval "$(starship init zsh)"
-eval "$(zoxide init zsh)"
+# Activate shell integrations when their brew packages are installed.
+[ -r "$ZSH_HIGHLIGHTING" ] && source "$ZSH_HIGHLIGHTING"
+[ -r "$ZSH_AUTOSUGGESTIONS" ] && source "$ZSH_AUTOSUGGESTIONS"
+
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
 
 # Load machine-local overrides if present.
 [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/local.zsh" ] \

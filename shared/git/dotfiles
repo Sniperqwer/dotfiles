@@ -1,0 +1,5 @@
+[core]
+	hooksPath = ~/.config/git/hooks
+
+[include]
+	path = ~/.config/git/identity-personal

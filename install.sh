@@ -83,7 +83,6 @@ EOF
 fi
 
 # ---------- package lists ----------
-# CLI formulas — see /Users/sniper/.claude/plans/install-sh-* for rationale.
 CLI_FORMULAS=(
   # Yazi preview stack
   yazi
@@ -130,6 +129,7 @@ CASKS=(
   ghostty
   wezterm
   karabiner-elements
+  typora
   font-lxgw-wenkai
 )
 

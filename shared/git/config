@@ -2,7 +2,6 @@
 	autocrlf = false
 	quotepath = false
 	excludesfile = ~/.config/git/gitignore_global
-	hooksPath = ~/.config/git/hooks
 [alias]
 	co = checkout
 	ci = commit
@@ -21,6 +20,6 @@
 [include]
 	path = ~/.config/git/config.local
 
-# Per-repo identity for ~/dotfiles itself.
+# Per-repo settings for ~/dotfiles itself.
 [includeIf "gitdir:~/dotfiles/"]
-	path = ~/.config/git/identity-personal
+	path = ~/.config/git/dotfiles

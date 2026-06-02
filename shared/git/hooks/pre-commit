@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ensure README.md / README.zh-CN.md stays in sync when shared/ top-level
+# Ensure README.md and README.zh-CN.md stay in sync when shared/ top-level
 # structure changes (new tool added or whole tool dir removed).
 #
 # Bypass with: git commit --no-verify
@@ -8,13 +8,9 @@ set -e
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
-# Only run inside the dotfiles repo; pass through for any other repo that
-# happens to use the same core.hooksPath.
+# Only run inside the supported dotfiles clone path; pass through elsewhere.
 case "$repo_root" in
     "$HOME/dotfiles") ;;
-    */dotfiles)
-        # Accept any path ending in /dotfiles to support clones in other locations.
-        ;;
     *) exit 0 ;;
 esac
 
@@ -56,12 +52,21 @@ new_dirs="$(printf '%s' "$new_dirs"     | sed 's/^ //')"
 removed_dirs="$(printf '%s' "$removed_dirs" | sed 's/^ //')"
 
 if [ -n "$new_dirs" ] || [ -n "$removed_dirs" ]; then
-    if ! printf '%s\n' "$staged_all" | grep -qE '^README\.md$|^README\.zh-CN\.md$'; then
+    missing_readmes=""
+    if ! printf '%s\n' "$staged_all" | grep -q '^README\.md$'; then
+        missing_readmes="$missing_readmes README.md"
+    fi
+    if ! printf '%s\n' "$staged_all" | grep -q '^README\.zh-CN\.md$'; then
+        missing_readmes="$missing_readmes README.zh-CN.md"
+    fi
+
+    if [ -n "$missing_readmes" ]; then
         cat >&2 <<MSG
-✗ pre-commit: shared/ top-level structure changed but README is not staged.
+✗ pre-commit: shared/ top-level structure changed but README files are not both staged.
 
   Added tool dirs:   ${new_dirs:-(none)}
   Removed tool dirs: ${removed_dirs:-(none)}
+  Missing staged:    ${missing_readmes# }
 
   Update BOTH:
     - README.md          ("Layout" tree + "What's tracked" table + hard rules)
