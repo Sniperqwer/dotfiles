@@ -14,6 +14,7 @@ dotfiles/
 ├── README.md
 ├── README.zh-CN.md
 ├── .gitignore
+├── install.sh                ← 可选的 brew 引导脚本（CLI + cask）
 └── shared/                    ← 进 git，跨机器共享
     ├── ghostty/config
     ├── git/{config, ignore, gitignore_global, identity-personal, hooks/}
@@ -49,31 +50,36 @@ dotfiles/
 
 ## 新机器快速部署
 
-要求：macOS 和 `brew install stow`。
+要求：macOS 和 Homebrew（见 https://brew.sh）。`stow` 及其它 CLI 依赖可通过下面第 2 步的 `install.sh` 一并安装。
 
 ```bash
 # 1. Clone
 git clone git@github.com:Sniperqwer/dotfiles.git ~/dotfiles
 
-# 2. 如果 ~/.config/<tool> 已经存在为实体目录，先备份再删，给 stow 让位：
+# 2. （可选）安装本仓库依赖的 brew 包。
+#    详见 `bash install.sh -h`。若你自己管理 brew 包，跳过即可。
+cd ~/dotfiles && bash install.sh        # 仅装 CLI
+# bash install.sh --all                  # CLI + cask
+
+# 3. 如果 ~/.config/<tool> 已经存在为实体目录，先备份再删，给 stow 让位：
 #    cp -aR ~/.config ~/.config.bak.$(date +%F)
 #    rm -rf ~/.config/{ghostty,git,karabiner,starship,wezterm,yazi,zsh}
 
-# 3. 部署 shared（必做）
+# 4. 部署 shared（必做）
 cd ~/dotfiles
 stow -v --target="$HOME/.config" --no-folding shared
 
-# 4. 部署 local（只在已经创建过 local/ 的机器上做，即需要单机覆盖的机器）
+# 5. 部署 local（只在已经创建过 local/ 的机器上做，即需要单机覆盖的机器）
 [ -d local ] && stow -v --target="$HOME/.config" --no-folding local
 
-# 5. 确认 ~/.zshrc 源了部署后的 main.zsh
+# 6. 确认 ~/.zshrc 源了部署后的 main.zsh
 #    若没有，加上这行：
 #    source "$HOME/.config/zsh/main.zsh"
 
-# 6. （仅 yazi）安装 package.toml 里声明的上游插件
+# 7. （仅 yazi）安装 package.toml 里声明的上游插件
 cd ~/.config/yazi && ya pkg install
 
-# 7. 确认 pre-commit hook 已就位（README 同步守卫）。
+# 8. 确认 pre-commit hook 已就位（README 同步守卫）。
 #    `shared/git/config` 里 `core.hooksPath = ~/.config/git/hooks`，钩子文件以
 #    100755 模式入库，git 在 clone 时会保留 +x，正常情况下不需要 chmod。
 git -C ~/dotfiles config core.hooksPath          # → ~/.config/git/hooks

@@ -14,6 +14,7 @@ dotfiles/
 ├── README.md
 ├── README.zh-CN.md
 ├── .gitignore
+├── install.sh                ← optional brew bootstrap (formulas + casks)
 └── shared/                    ← tracked, portable across machines
     ├── ghostty/config
     ├── git/{config, ignore, gitignore_global, identity-personal, hooks/}
@@ -49,32 +50,37 @@ Both `shared/` and `local/` are independent stow packages. After stow, `~/.confi
 
 ## Quick start (new machine)
 
-Requires macOS and `brew install stow`.
+Requires macOS and Homebrew (see https://brew.sh). `stow` and other CLI deps can be installed via `install.sh` in step 2.
 
 ```bash
 # 1. Clone
 git clone git@github.com:Sniperqwer/dotfiles.git ~/dotfiles
 
-# 2. If ~/.config/<tool> already exists as a real directory, back it up first
+# 2. (Optional) Install the brew packages this repo depends on.
+#    See `bash install.sh -h` for flags. Skip if you manage brew packages yourself.
+cd ~/dotfiles && bash install.sh        # CLI only
+# bash install.sh --all                  # CLI + casks
+
+# 3. If ~/.config/<tool> already exists as a real directory, back it up first
 #    and remove it so stow has a clean target:
 #    cp -aR ~/.config ~/.config.bak.$(date +%F)
 #    rm -rf ~/.config/{ghostty,git,karabiner,starship,wezterm,yazi,zsh}
 
-# 3. Deploy shared (mandatory)
+# 4. Deploy shared (mandatory)
 cd ~/dotfiles
 stow -v --target="$HOME/.config" --no-folding shared
 
-# 4. Deploy local (only if you've created one — on machines that need per-machine overrides)
+# 5. Deploy local (only if you've created one — on machines that need per-machine overrides)
 [ -d local ] && stow -v --target="$HOME/.config" --no-folding local
 
-# 5. Make sure ~/.zshrc sources the deployed main.zsh
+# 6. Make sure ~/.zshrc sources the deployed main.zsh
 #    (add the line below if it isn't there):
 #    source "$HOME/.config/zsh/main.zsh"
 
-# 6. (yazi only) install upstream plugins listed in package.toml
+# 7. (yazi only) install upstream plugins listed in package.toml
 cd ~/.config/yazi && ya pkg install
 
-# 7. Verify the pre-commit hook is wired up (README sync guard).
+# 8. Verify the pre-commit hook is wired up (README sync guard).
 #    `shared/git/config` sets `core.hooksPath = ~/.config/git/hooks`, and the hook
 #    is committed with mode 100755, so git preserves the +x bit on clone — no
 #    chmod needed in normal cases.
