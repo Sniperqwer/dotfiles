@@ -40,7 +40,9 @@ confirm-close-surface = false
 # 实用选项
 mouse-hide-while-typing = true
 copy-on-select = clipboard
-quit-after-last-window-closed = true
+
+# 关窗后驻留后台，避免每次冷启动卡顿（⌘Q 彻底退出）
+quit-after-last-window-closed = false
 
 # Load machine-local overrides if present.
 config-file = ?local.conf
