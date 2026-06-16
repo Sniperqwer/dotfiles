@@ -12,3 +12,8 @@
 
 # claude code 文件
 CLAUDE.md
+
+# codegraph 个人工作流产物。Cursor 本身可能是团队共享的，
+# 所以只精确忽略 codegraph 相关的 Cursor 规则，不动 .cursor/ 整体。
+.codegraph/
+.cursor/rules/codegraph.mdc
