@@ -1,6 +1,12 @@
 [mgr]
 ratio = [1, 2, 5]
 
+[open]
+prepend_rules = [
+	{ url = "*.html", use = "open" },
+	{ url = "*.htm",  use = "open" },
+]
+
 [preview]
 max_width = 3000
 max_height = 3000
